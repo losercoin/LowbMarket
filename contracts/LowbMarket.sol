@@ -62,7 +62,7 @@ contract LowbMarket {
         emit ItemOffered(itemId, minSalePriceInWei, address(0));
     }
 
-    function offerItemForSale(uint itemId, uint minSalePriceInWei, address toAddress) public {
+    function offerItemForSaleToAddress(uint itemId, uint minSalePriceInWei, address toAddress) public {
         IERC721 token = IERC721(nonFungibleTokenAddress);
         require(token.ownerOf(itemId) == msg.sender, "You don't own this token.");
         require(token.getApproved(itemId) == address(this), "Approve this token first.");
@@ -127,9 +127,11 @@ contract LowbMarket {
         if (existing.value > 0) {
             // Refund the failing bid
             pendingWithdrawals[existing.bidder] += existing.value;
-            // Lock the current bid
-            pendingWithdrawals[existing.bidder] -= existing.value;
         }
+
+        // Lock the current bid
+        pendingWithdrawals[msg.sender] -= amount;
+
         itemBids[itemId] = Bid(true, itemId, msg.sender, amount);
         emit NewBidEntered(itemId, amount, msg.sender);
     }
@@ -143,7 +145,7 @@ contract LowbMarket {
         Bid memory bid = itemBids[itemId];
         require(bid.value > 0, "Nobody bid for this item yet.");
 
-        nft.safeTransferFrom(seller, msg.sender, itemId);
+        nft.safeTransferFrom(seller, bid.bidder, itemId);
         itemsOfferedForSale[itemId] = Offer(false, itemId, bid.bidder, 0, address(0));
         uint amount = bid.value;
         itemBids[itemId] = Bid(false, itemId, address(0), 0);
