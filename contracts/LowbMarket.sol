@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./IERC721LOWB.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract LowbMarket {
 
     address public nonFungibleTokenAddress;
     address public lowbTokenAddress;
+
+    address public owner;
 
     struct Offer {
         bool isForSale;
@@ -19,9 +21,8 @@ contract LowbMarket {
     }
 
     struct Bid {
-        bool hasBid;
-        uint itemIndex;
-        address bidder;
+        address prevBidder;
+        address nextBidder;
         uint value;
     }
 
@@ -29,20 +30,24 @@ contract LowbMarket {
     mapping (uint => Offer) public itemsOfferedForSale;
 
     // A record of the highest bid
-    mapping (uint => Bid) public itemBids;
+    mapping (uint => mapping (address => Bid)) public itemBids;
 
     mapping (address => uint) public pendingWithdrawals;
+    mapping (uint => uint) public newTokenOffer;
 
-    event ItemNoLongerForSale(uint itemId);
-    event ItemOffered(uint itemId, uint minValue, address toAddress);
-    event NewBidEntered(uint itemId, uint value, address fromAddress);
-    event BidWithdrawn(uint itemId, uint value, address fromAddress);
-    event ItemBought(uint itemId, uint value, address fromAddress, address toAddress);
+    event ItemNoLongerForSale(uint indexed itemId);
+    event ItemOffered(uint indexed itemId, uint minValue, address indexed toAddress);
+    event NewItemsOffered(uint indexed groupId, uint minValue);
+    event NewBidEntered(uint indexed groupId, uint value, address indexed fromAddress);
+    event BidWithdrawn(uint indexed itemId, uint value, address indexed fromAddress);
+    event ItemBought(uint indexed itemId, uint value, address indexed fromAddress, address indexed toAddress);
+    event ItemMint(uint indexed itemId, uint value, address indexed toAddress);
 
     constructor(address lowbToken_, address nonFungibleToken_) {
         require(nonFungibleToken_ != address(0));
         nonFungibleTokenAddress = nonFungibleToken_;
         lowbTokenAddress = lowbToken_;
+        owner = msg.sender;
     }
 
     function itemNoLongerForSale(uint itemId) public {
@@ -103,64 +108,118 @@ contract LowbMarket {
         itemNoLongerForSale(itemId);
         pendingWithdrawals[seller] += amount;
         emit ItemBought(itemId, amount, seller, msg.sender);
-
-        // Check for the case where there is a bid from the new owner and refund it.
-        // Any other bid can stay in place.
-        Bid memory bid = itemBids[itemId];
-        if (bid.bidder == msg.sender) {
-            // Kill bid and refund value
-            pendingWithdrawals[msg.sender] += bid.value;
-            itemBids[itemId] = Bid(false, itemId, address(0), 0);
-        }
     }
 
-    function enterBid(uint itemId, uint amount) public {
+    function enterBid(uint groupId, uint amount) public {
         require(pendingWithdrawals[msg.sender] >= amount, "Please deposit enough lowb before bid!");
+        require(amount > 0, "Please bid with some lowb!");
 
-        IERC721 nft = IERC721(nonFungibleTokenAddress);
-        require(nft.ownerOf(itemId) != address(0), "Token not created yet.");               
-        require(nft.ownerOf(itemId) != msg.sender, "You already own it.");
+        IERC721LOWB nft = IERC721LOWB(nonFungibleTokenAddress);
+        uint itemId = nft.groupStart(groupId);
+        require(nft.ownerOf(itemId) != address(0), "Token not created yet.");
 
-        Bid memory existing = itemBids[itemId];
-        require(amount > existing.value, "The new bid should be larger than existing bids");
-        
-        if (existing.value > 0) {
-            // Refund the failing bid
-            pendingWithdrawals[existing.bidder] += existing.value;
-        }
+        require(itemBids[groupId][msg.sender].value == 0, "You've already entered a bid!");
 
         // Lock the current bid
         pendingWithdrawals[msg.sender] -= amount;
+        address latestBidder = itemBids[groupId][address(0)].nextBidder;
+        itemBids[groupId][latestBidder].prevBidder = msg.sender;
+        itemBids[groupId][msg.sender] = Bid(address(0), latestBidder, amount);
+        itemBids[groupId][address(0)].nextBidder = msg.sender;
 
-        itemBids[itemId] = Bid(true, itemId, msg.sender, amount);
-        emit NewBidEntered(itemId, amount, msg.sender);
+        emit NewBidEntered(groupId, amount, msg.sender);
     }
 
-    function acceptBid(uint itemId) public {
-        IERC721 nft = IERC721(nonFungibleTokenAddress);
+    function acceptBid(uint itemId, address bidder) public {
+        IERC721LOWB nft = IERC721LOWB(nonFungibleTokenAddress);
         require(nft.ownerOf(itemId) == msg.sender, "You don't own this token.");
         require(nft.getApproved(itemId) == address(this), "Approve this token first.");
         
         address seller = msg.sender;
-        Bid memory bid = itemBids[itemId];
-        require(bid.value > 0, "Nobody bid for this item yet.");
+        uint groupId = nft.groupOf(itemId);
+        uint amount = itemBids[groupId][bidder].value;
+        require(amount > 0, "No bid from this address for this item yet.");
 
-        nft.safeTransferFrom(seller, bid.bidder, itemId);
-        itemsOfferedForSale[itemId] = Offer(false, itemId, bid.bidder, 0, address(0));
-        uint amount = bid.value;
-        itemBids[itemId] = Bid(false, itemId, address(0), 0);
+        nft.safeTransferFrom(seller, bidder, itemId);
+        itemsOfferedForSale[itemId] = Offer(false, itemId, bidder, 0, address(0));
+
+        itemBids[groupId][bidder].value = 0;
+        address nextBidder = itemBids[groupId][bidder].nextBidder;
+        address prevBidder = itemBids[groupId][bidder].prevBidder;
+        itemBids[groupId][prevBidder].nextBidder = nextBidder;
+        itemBids[groupId][nextBidder].prevBidder = prevBidder;
+        
         pendingWithdrawals[seller] += amount;
-        emit ItemBought(itemId, bid.value, seller, bid.bidder);
+        emit ItemBought(itemId, amount, seller, bidder);
     }
 
-    function withdrawBid(uint itemId) public {
-        Bid memory bid = itemBids[itemId];
-        require(bid.bidder == msg.sender, "You don't have a bid for it.");
-        emit BidWithdrawn(itemId, bid.value, msg.sender);
-        uint amount = bid.value;
-        itemBids[itemId] = Bid(false, itemId, address(0), 0);
+    function withdrawBid(uint groupId) public {
+        uint amount = itemBids[groupId][msg.sender].value;
+        require(amount > 0, "You don't have a bid for it.");
+        emit BidWithdrawn(groupId, amount, msg.sender);
+        
+        itemBids[groupId][msg.sender].value = 0;
+        address nextBidder = itemBids[groupId][msg.sender].nextBidder;
+        address prevBidder = itemBids[groupId][msg.sender].prevBidder;
+        itemBids[groupId][prevBidder].nextBidder = nextBidder;
+        itemBids[groupId][nextBidder].prevBidder = prevBidder;
         // Refund the bid money
         pendingWithdrawals[msg.sender] += amount;
+    }
+
+    function approveBid(uint groupId, address bidder) public {
+        IERC721LOWB nft = IERC721LOWB(nonFungibleTokenAddress);
+        uint itemId = nft.groupStart(groupId);
+        require(nft.ownerOf(itemId) == msg.sender, "You don't have access to approve this bid for the new token.");
+        require(nft.getApproved(itemId) == address(this), "Approve this contract to claim the new tokens first.");
+
+        uint amount = itemBids[groupId][bidder].value;
+        require(amount > 0, "No bid from this address for this item yet.");
+        
+        uint tokenId = nft.claim(bidder, groupId);
+        
+        itemBids[groupId][bidder].value = 0;
+        address nextBidder = itemBids[groupId][bidder].nextBidder;
+        address prevBidder = itemBids[groupId][bidder].prevBidder;
+        itemBids[groupId][prevBidder].nextBidder = nextBidder;
+        itemBids[groupId][nextBidder].prevBidder = prevBidder;
+
+        emit ItemMint(tokenId, amount, bidder);
+    }
+
+    function offerItemsForPublicSale(uint groupId, uint minSalePriceInWei) public {
+        IERC721LOWB nft = IERC721LOWB(nonFungibleTokenAddress);
+        uint itemId = nft.groupStart(groupId);
+        require(nft.ownerOf(itemId) == msg.sender, "You don't have access to approve this bid for the new token.");
+        require(nft.getApproved(itemId) == address(this), "Approve this contract to claim the new tokens first.");
+        require(minSalePriceInWei > 0, "Token price should not be zero.");
+
+        newTokenOffer[groupId] = minSalePriceInWei;
+        emit NewItemsOffered(groupId, minSalePriceInWei);
+    }
+
+    function buyNewItem(uint groupId, uint amount) public {
+        require(newTokenOffer[groupId] > 0, "this item is not for sale now");
+        require(amount >= newTokenOffer[groupId], "You didn't send enough LOWB.");
+
+        IERC721LOWB nft = IERC721LOWB(nonFungibleTokenAddress);
+        uint itemId = nft.groupStart(groupId);
+        require(nft.getApproved(itemId) == address(this), "Require approvement to claim the new tokens.");
+
+        IERC20 lowb = IERC20(lowbTokenAddress);
+        require(lowb.transferFrom(msg.sender, address(this), amount), "Lowb transfer failed");
+
+        uint tokenId = nft.claim(msg.sender, groupId);
+
+        pendingWithdrawals[address(this)] += amount;
+        emit ItemMint(tokenId, amount, msg.sender);
+    }
+
+    function pullFunds() public {
+        require(msg.sender == owner, "Only owner can pull the funds!");
+        IERC20 lowb = IERC20(lowbTokenAddress);
+        lowb.transfer(msg.sender, pendingWithdrawals[address(this)]);
+        pendingWithdrawals[address(this)] = 0;
     }
 
 }
