@@ -12,6 +12,8 @@ interface IERC721LOWB is IERC721 {
 
     function groupStart(uint256 groupId) external view returns (uint256 tokenId);
 
+    function royaltyOf(uint256 groupId) external view returns (uint256 royalty);
+
     function claim(address to, uint256 groupId) external returns (uint256 tokenId);
 
 }
