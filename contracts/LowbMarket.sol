@@ -95,7 +95,7 @@ contract LowbMarket {
         require(token.transfer(tx.origin, amount), "Lowb transfer failed");
     }
 
-    function make_deal(uint itemId, uint amount) public returns (uint) {
+    function _makeDeal(uint itemId, uint amount) private returns (uint) {
         IERC721LOWB nft = IERC721LOWB(nonFungibleTokenAddress);
         uint groupId = nft.groupOf(itemId);
         uint royalty = nft.royaltyOf(groupId);
@@ -126,7 +126,7 @@ contract LowbMarket {
 
         itemNoLongerForSale(itemId);
 
-        uint actual_amount = make_deal(itemId, amount);
+        uint actual_amount = _makeDeal(itemId, amount);
         pendingWithdrawals[seller] += actual_amount;
         emit ItemBought(itemId, amount, seller, msg.sender);
     }
@@ -170,7 +170,7 @@ contract LowbMarket {
         itemBids[groupId][prevBidder].nextBidder = nextBidder;
         itemBids[groupId][nextBidder].prevBidder = prevBidder;
         
-        uint actual_amount = make_deal(itemId, amount);
+        uint actual_amount = _makeDeal(itemId, amount);
         pendingWithdrawals[seller] += actual_amount;
         emit ItemBought(itemId, amount, seller, bidder);
     }
@@ -206,7 +206,7 @@ contract LowbMarket {
         itemBids[groupId][prevBidder].nextBidder = nextBidder;
         itemBids[groupId][nextBidder].prevBidder = prevBidder;
 
-        uint actual_amount = make_deal(itemId, amount);
+        uint actual_amount = _makeDeal(itemId, amount);
         address creator = nft.creatorOf(groupId);
         pendingWithdrawals[creator] += actual_amount;
         emit ItemMint(tokenId, amount, bidder);
@@ -236,7 +236,7 @@ contract LowbMarket {
 
         uint tokenId = nft.claim(msg.sender, groupId);
 
-        uint actual_amount = make_deal(itemId, amount);
+        uint actual_amount = _makeDeal(itemId, amount);
         address creator = nft.creatorOf(groupId);
         pendingWithdrawals[creator] += actual_amount;
         emit ItemMint(tokenId, amount, msg.sender);
