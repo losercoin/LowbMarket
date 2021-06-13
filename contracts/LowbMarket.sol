@@ -84,15 +84,15 @@ contract LowbMarket {
     function deposit(uint amount) public {
         require(amount > 0, "You deposit nothing!");
         IERC20 token = IERC20(lowbTokenAddress);
-        require(token.transferFrom(msg.sender, address(this), amount), "Lowb transfer failed");
-        pendingWithdrawals[msg.sender] +=  amount;
+        require(token.transferFrom(tx.origin, address(this), amount), "Lowb transfer failed");
+        pendingWithdrawals[tx.origin] +=  amount;
     }
 
     function withdraw(uint amount) public {
-        require(amount <= pendingWithdrawals[msg.sender], "amount larger than that pending to withdraw");  
-        pendingWithdrawals[msg.sender] -= amount;
+        require(amount <= pendingWithdrawals[tx.origin], "amount larger than that pending to withdraw");  
+        pendingWithdrawals[tx.origin] -= amount;
         IERC20 token = IERC20(lowbTokenAddress);
-        require(token.transfer(msg.sender, amount), "Lowb transfer failed");
+        require(token.transfer(tx.origin, amount), "Lowb transfer failed");
     }
 
     function make_deal(uint itemId, uint amount) public returns (uint) {

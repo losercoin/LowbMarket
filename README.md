@@ -22,4 +22,4 @@ A smart contract support to trade NFT using LOWB
 
 - Change the token address in `2_deploy_contracts.js` before deploying to live work.
 - Create a new .secret file in root directory and enter your 12 word mnemonic seed phrase. Then just run `truffle migrate --network testnet`. You will deploy contracts to the Binance testnet.
-- To verify the contract, create a new .apikey file in root directory and enter the [API Key](https://bscscan.com/myapikey). Then just run `truffle run verify AirdropClaim@{contract-address} --network testnet`. 
+- To verify the contract, create a new .apikey file in root directory and enter the [API Key](https://bscscan.com/myapikey). Then just run `truffle run verify LowbMarket@{contract-address} --network testnet`. 
