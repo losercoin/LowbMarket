@@ -1,5 +1,5 @@
 # LowbMarket
-A smart contract support to trade NFT using LOWB
+A smart contract support to trade NFT using LOWB on matic chain
 
 ### Compiling and running the code
 - Before running this project, install truffle first: `npm install -g truffle`.
