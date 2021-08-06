@@ -24,6 +24,8 @@ const HDWalletProvider = require('@truffle/hdwallet-provider');
 const fs = require('fs');
 const mnemonic = fs.readFileSync(".secret").toString().trim();
 const BSCSCANAPIKEY = fs.readFileSync(".apikey").toString();
+const ETHSCANAPIKEY = fs.readFileSync(".matickey").toString();
+const PROJECT_ID = fs.readFileSync(".rpc_id").toString(); // from https://rpc.maticvigil.com/
 
 module.exports = {
   /**
@@ -40,7 +42,8 @@ module.exports = {
     'truffle-plugin-verify'
   ],
   api_keys: {
-    bscscan: BSCSCANAPIKEY
+     etherscan: ETHSCANAPIKEY,
+     bscscan: BSCSCANAPIKEY
   },
   networks: {
     // Useful for testing. The `development` name is special - truffle uses it by default
@@ -53,6 +56,22 @@ module.exports = {
       host: "127.0.0.1",     // Localhost (default: none)
       port: 7545,            // Standard Ethereum port (default: none)
       network_id: "*",       // Any network (default: none)
+    },
+    mumbai: {
+      provider: () => new HDWalletProvider(mnemonic, `https://rpc-mumbai.maticvigil.com`),
+      network_id: 80001,
+      gas: 20000000,
+      gasPrice: 1500000000,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
+    matic: {
+      provider: () => new HDWalletProvider(mnemonic, `https://rpc-mainnet.maticvigil.com`),
+      network_id: 137,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
     },
 	testnet: {
       provider: () => new HDWalletProvider(mnemonic, `https://data-seed-prebsc-1-s2.binance.org:8545`),
