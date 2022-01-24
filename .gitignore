@@ -106,3 +106,4 @@ dist
 # Mnemonic and api key file
 .secret
 .apikey
+.address
