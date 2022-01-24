@@ -1,7 +1,7 @@
-const LowbMarket = artifacts.require("LowbMarket");
+const LowbMarketHelper = artifacts.require("LowbMarketHelper");
 const fs = require('fs');
 const address = fs.readFileSync("./../.address").toString().trim();
 
 module.exports = function(deployer) {
-  deployer.deploy(LowbMarket, address, address);
+  deployer.deploy(LowbMarketHelper, address);
 };
