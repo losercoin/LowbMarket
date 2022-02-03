@@ -4,5 +4,5 @@ const fs = require('fs');
 const address = fs.readFileSync("./../.address").toString().trim();
 
 module.exports = async function (deployer) {
-  await deployer.deploy(NFTCollection);
+  await deployer.deploy(NFTCollection, address);
 };
