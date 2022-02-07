@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 contract NFTCollection is ERC721, ERC721Enumerable {
 
-  event mintNFT(uint256 tokenId, address owner, string uri, string name, string description);
+  event mintNFT(uint256 indexed tokenId, address indexed owner, string uri, string name, string description);
 
   constructor(address _address) ERC721("Lowb Collection", "Lowb") {
 
