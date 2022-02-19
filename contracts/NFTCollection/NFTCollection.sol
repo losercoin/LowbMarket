@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 contract NFTCollection is ERC721, ERC721Enumerable {
 
   event mintNFT(uint256 indexed tokenId, address indexed owner, string uri, string name, string description);
+  event saleNFT(uint indexed tokenId, string price);
 
   constructor(address _address) ERC721("Lowb Collection", "Lowb") {
 
@@ -23,6 +24,12 @@ contract NFTCollection is ERC721, ERC721Enumerable {
   function safeMint(uint256 tokenId, string memory uri, string memory name, string memory description) public {
     _safeMint(msg.sender, tokenId);
     emit mintNFT(tokenId, msg.sender, uri, name, description);
+  }
+
+  function prepareForSale(uint256 tokenId, string memory price) payable public {
+    require(msg.sender != address(0));
+    require(_exists(tokenId));
+    emit saleNFT(tokenId, price);
   }
 
 }
