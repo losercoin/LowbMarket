@@ -8,6 +8,8 @@ contract NFTCollection is ERC721, ERC721Enumerable {
 
   event mintNFT(uint256 indexed tokenId, address indexed owner, string uri, string name, string description);
   event saleNFT(uint indexed tokenId, string price);
+  event bid(uint256 indexed tokenId, address indexed sender, string price);
+  event closeAllBid(uint256 indexed tokenId);
 
   constructor(address _address) ERC721("Lowb Collection", "Lowb") {
 
@@ -26,10 +28,14 @@ contract NFTCollection is ERC721, ERC721Enumerable {
     emit mintNFT(tokenId, msg.sender, uri, name, description);
   }
 
-  function prepareForSale(uint256 tokenId, string memory price) payable public {
+  function prepareForSale(uint256 tokenId, string memory price) public {
     require(msg.sender != address(0));
     require(_exists(tokenId));
     emit saleNFT(tokenId, price);
   }
 
+  function bidNFT(uint256 tokenId, string memory price) public {
+    require(msg.sender != address(0));
+    emit bid(tokenId, msg.sender, price);
+  }
 }
