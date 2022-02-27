@@ -1,8 +1,10 @@
 // migrations/7_deploy_NFTCollection.js
 const NFTCollection = artifacts.require('NFTCollection');
-const fs = require('fs');
-const address = fs.readFileSync("./../.address").toString().trim();
+const NFTMarketplace = artifacts.require('NFTMarketplace');
 
 module.exports = async function (deployer) {
-  await deployer.deploy(NFTCollection, address);
+  await deployer.deploy(NFTCollection);
+  const nftCollection = await NFTCollection.deployed();
+
+  await deployer.deploy(NFTMarketplace, nftCollection.address);
 };
