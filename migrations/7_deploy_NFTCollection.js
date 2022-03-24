@@ -6,5 +6,5 @@ module.exports = async function (deployer) {
   await deployer.deploy(NFTCollection);
   const nftCollection = await NFTCollection.deployed();
 
-  await deployer.deploy(NFTMarketplace, nftCollection.address);
+  await deployer.deploy(NFTMarketplace, nftCollection.address, '0x5aa1a18432aa60bad7f3057d71d3774f56cd34b8');
 };
