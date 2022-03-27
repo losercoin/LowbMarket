@@ -34,7 +34,7 @@ contract NFTMarketplace {
     uint256 price = tokenPrice[tokenId];
     require(msg.value >= price, "INSUFFICIENT BNB"); 
     nftCollection.transferFrom(address(this), msg.sender, tokenId);
-    payable(msg.sender).transfer(price);
+    payable(tokenSeller[tokenId]).transfer(price);
     emit buyNFT(from, msg.sender, tokenId, price);
   }
 }
