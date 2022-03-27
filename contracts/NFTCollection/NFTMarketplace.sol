@@ -30,11 +30,11 @@ contract NFTMarketplace {
     emit saleNFT(tokenId, price);
   }
 
-  function sellNFT(address from, uint256 tokenId) payable public {
+  function sellNFT(uint256 tokenId) payable public {
     uint256 price = tokenPrice[tokenId];
     require(msg.value >= price, "INSUFFICIENT BNB"); 
     nftCollection.transferFrom(address(this), msg.sender, tokenId);
     payable(tokenSeller[tokenId]).transfer(price);
-    emit buyNFT(from, msg.sender, tokenId, price);
+    emit buyNFT(tokenSeller[tokenId], msg.sender, tokenId, price);
   }
 }
